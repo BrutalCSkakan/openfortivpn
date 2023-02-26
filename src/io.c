@@ -39,6 +39,7 @@
 #include <net/if_ppp.h>
 #endif
 
+#include <assert.h>
 #include <errno.h>
 #include <signal.h>
 #include <string.h>
@@ -241,7 +242,7 @@ struct lcp_option_conf {
 	const char *name;
 };
 
-static const int default_mru = 1534;
+static const size_t default_mru = 1534;
 
 static const struct lcp_option_conf lcp_valid_options[256] = {
 	[0] = {           0, 0, "RESERVED",                   },
@@ -279,6 +280,7 @@ static struct conf_option *lcp_peer[256] = {
 
 static int lcp_id;
 
+#ifdef DEFINE_UNUSED_COMMENTED_OUT_FUNCTION
 static int conf_option_get(struct conf_option **options, int type, void *data, int len)
 {
 	struct conf_option *opt = options[type];
@@ -293,6 +295,7 @@ static int conf_option_get(struct conf_option **options, int type, void *data, i
 	}
 	return -1;
 }
+#endif
 
 static int conf_option_set(struct conf_option **options, int type, int len, void *data)
 {
@@ -308,25 +311,28 @@ static int conf_option_set(struct conf_option **options, int type, int len, void
 		opt = malloc(len);
 	else if (opt->length != len)
 		opt = realloc(opt, len);
-	if (opt != NULL) {
-		options[type] = opt;
-		opt->type = type;
-		opt->length = len;
-		if (len > 2)
-			memcpy(opt->data, data, len - 2);
-	}
-	return (opt == NULL) ? -1 : 0;
+
+	if (opt == NULL)
+		return -1;
+
+	options[type] = opt;
+	opt->type = type;
+	opt->length = len;
+	if (len > 2)
+		memcpy(opt->data, data, len - 2);
+	return 0;
 }
 
 static struct conf_option *conf_option_init(struct conf_option_list *optlist)
 {
-	int header = sizeof(struct lcp_header) + sizeof(uint16_t);
+	const size_t header = sizeof(struct lcp_header) + sizeof(uint16_t);
+
+	assert(optlist);
 
 	optlist->head = malloc(header + default_mru);
 	if (optlist->head) {
 		memset(optlist->head, 0, header + default_mru);
-		optlist->head = (struct conf_option *)(((uint8_t *)optlist->head)
-		                                       + header);
+		optlist->head = (struct conf_option *)((uint8_t *)optlist->head + header);
 		optlist->tail = optlist->head;
 	}
 	return optlist->head;
@@ -335,6 +341,8 @@ static struct conf_option *conf_option_init(struct conf_option_list *optlist)
 static int conf_option_encode(struct conf_option_list *optlist, int type, int len,
                               void *data)
 {
+	assert(optlist);
+
 	optlist->tail->type = type;
 	optlist->tail->length = len;
 	if (len > 2)
@@ -345,16 +353,17 @@ static int conf_option_encode(struct conf_option_list *optlist, int type, int le
 
 static int conf_option_length(const struct conf_option_list *optlist)
 {
-	if (optlist)
-		return (uint8_t *)optlist->tail - (uint8_t *)optlist->head;
-	else
-		return 0;
+	assert(optlist);
+
+	return (uint8_t *)optlist->tail - (uint8_t *)optlist->head;
 }
 
 static int conf_option_free(struct conf_option_list *optlist)
 {
+	assert(optlist);
+
 	if (optlist->head != NULL) {
-		int header = sizeof(struct lcp_header) + sizeof(uint16_t);
+		const size_t header = sizeof(struct lcp_header) + sizeof(uint16_t);
 
 		free((uint8_t *)optlist->head - header);
 		optlist->head = optlist->tail = NULL;
@@ -413,8 +422,8 @@ static int conf_request(struct tunnel *tunnel)
 	uint32_t magic = htonl(magic_seed);
 
 	conf_option_init(&request);
-	conf_option_encode(&request, LCP_COPT_MRU, 4, &mru);
-	conf_option_encode(&request, LCP_COPT_MAGIC, 6, &magic);
+	conf_option_encode(&request, LCP_COPT_MRU, 2 + sizeof(uint16_t), &mru);
+	conf_option_encode(&request, LCP_COPT_MAGIC, 2 + sizeof(uint32_t), &magic);
 	ret = lcp_option_send(tunnel, 0, LCP_CONF_REQUEST, &request, 1);
 	conf_option_free(&request);
 	return ret;
@@ -756,7 +765,7 @@ int ipcp_option_send(struct tunnel *tunnel, int id, int code,
 	if (optlist && optlist->head) {
 		uint8_t *packet = (uint8_t *)optlist->head;
 		struct ipcp_header *header = ((struct ipcp_header *)packet) - 1;
-		unsigned short *ppp_type = ((unsigned short *)header) - 1;
+		uint16_t *ppp_type = ((uint16_t *)header) - 1;
 		const size_t hdrlen = sizeof(struct ipcp_header) + sizeof(uint16_t);
 		const int len = conf_option_length(optlist);
 
