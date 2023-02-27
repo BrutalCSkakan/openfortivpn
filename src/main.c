@@ -60,7 +60,8 @@
 "  --ppp-system=<system>         Connect to the specified system as defined in\n" \
 "                                /etc/ppp/ppp.conf.\n"
 #else
-#error "Neither HAVE_USR_SBIN_PPPD nor HAVE_USR_SBIN_PPP have been defined."
+#define PPPD_USAGE ""
+#define PPPD_HELP ""
 #endif
 
 #if HAVE_RESOLVCONF

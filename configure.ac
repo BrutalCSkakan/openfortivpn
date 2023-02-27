@@ -211,7 +211,6 @@ cast_addr(&(&route)->rt_dst)->sin_family = AF_INET;
 ])
 
 NETSTAT_PATH=""
-PPP_PATH=""
 RESOLVCONF_PATH=""
 
 # prepare possibility to override default locations
@@ -219,26 +218,6 @@ AC_ARG_WITH([netstat],
 	AS_HELP_STRING([--with-netstat],
 		       [set the path to the netstat executable on MacOSX or FreeBSD]),
 	NETSTAT_PATH="$withval"
-)
-# this is for the pppd daemon executable
-AC_ARG_WITH([pppd],
-	AS_HELP_STRING([--with-pppd],
-		       [set the path to the pppd daemon executable]),
-	AS_IF([test ! "x$with_pppd" = "xno" -a ! "x$with_pppd" = "xyes"],[
-		PPP_PATH="$withval"
-		with_pppd="yes"
-		with_ppp="no"
-	])
-)
-# and this is for the ppp user space client on FreeBSD
-AC_ARG_WITH([ppp],
-	AS_HELP_STRING([--with-ppp],
-		       [set the path to the ppp userspace client on FreeBSD]),
-	AS_IF([test ! "x$with_ppp" = "xno" -a ! "x$with_ppp" = "xyes"],[
-		PPP_PATH="$withval"
-		with_ppp="yes"
-		with_pppd="no"
-	])
 )
 
 # override for /proc/net/route detection
@@ -266,66 +245,6 @@ AS_IF([test "x$enable_proc" = "x"], [
 	])
 ])
 
-# check for ppp if not specified
-AC_PATH_PROG(PPP, [ppp], [/usr/sbin/ppp], "$PATH:/sbin:/usr/sbin")
-AS_IF([test "x$PPP_PATH" = "x"], [
-	AC_CHECK_FILE([$PPP], [
-		AS_IF([test "x$PPP_PATH" = "x"], [
-			PPP_PATH="$PPP"
-		])
-		AS_IF([test "x$with_ppp" = "x"], [
-			with_ppp="yes"
-		])
-	],[])
-])
-# check for pppd if not specified
-AC_PATH_PROG(PPPD, [pppd], [/usr/sbin/pppd], "$PATH:/sbin:/usr/sbin")
-AS_IF([test "x$PPP_PATH" = "x"], [
-	AC_CHECK_FILE([$PPPD], [
-		AS_IF([test "x$PPP_PATH" = "x"], [
-			PPP_PATH="$PPPD"
-		])
-		AS_IF([test "x$with_pppd" = "x"], [
-			with_pppd="yes"
-		])
-	],[])
-])
-# when neither ppp nor pppd are enabled fall back to a sensible choice for the platform
-AS_IF([test "x$with_ppp" = "x" -a "x$with_pppd" = "x"], [
-	AS_IF([test "x$(uname)" = "xFreeBSD"], [
-		with_ppp="yes"
-		PPP_PATH="/usr/sbin/ppp"
-	], [
-		with_pppd="yes"
-		PPP_PATH="/usr/sbin/pppd"
-	])
-])
-# when both are enabled, give pppd the higher priority (we can only use one of them)
-AS_IF([test "x$with_ppp" = "xyes" -a "x$with_pppd" = "xyes"], [
-	with_ppp="no"
-])
-# replace empty settings with "no"
-AS_IF([test "x$with_pppd" = "x"], [
-	with_pppd="no"
-])
-AS_IF([test "x$with_ppp" = "x"], [
-	with_ppp="no"
-])
-
-AS_IF([test "x$with_ppp" = "xyes"], [
-	AC_DEFINE(HAVE_USR_SBIN_PPP, 1)
-	AC_MSG_NOTICE([HAVE_USR_SBIN_PPP... 1])
-],[
-	AC_DEFINE(HAVE_USR_SBIN_PPP, 0)
-	AC_MSG_NOTICE([HAVE_USR_SBIN_PPP... 0])
-])
-AS_IF([test "x$with_pppd" = "xyes"], [
-	AC_DEFINE(HAVE_USR_SBIN_PPPD, 1)
-	AC_MSG_NOTICE([HAVE_USR_SBIN_PPPD... 1])
-],[
-	AC_DEFINE(HAVE_USR_SBIN_PPPD, 0)
-	AC_MSG_NOTICE([HAVE_USR_SBIN_PPPD... 0])
-])
 AS_IF([test "x$enable_proc" = "xyes"], [
 	AC_DEFINE(HAVE_PROC_NET_ROUTE, 1)
 	AC_MSG_NOTICE([HAVE_PROC_NET_ROUTE... 1])
@@ -333,9 +252,6 @@ AS_IF([test "x$enable_proc" = "xyes"], [
 	AC_DEFINE(HAVE_PROC_NET_ROUTE, 0)
 	AC_MSG_NOTICE([HAVE_PROC_NET_ROUTE... 0])
 ])
-
-AC_SUBST(PPP_PATH)
-AC_MSG_NOTICE([PPP_PATH...] $PPP_PATH)
 
 AC_SUBST(NETSTAT_PATH)
 AS_IF([test "x$NETSTAT_PATH" != "x"], [
