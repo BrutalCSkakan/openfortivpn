@@ -35,9 +35,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
-#if HAVE_LINUX_IF_PPP_H
-#include <net/if_ppp.h>
-#endif
+#include <sys/ioctl.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -69,6 +67,19 @@ typedef sem_t os_semaphore_t;
 #define SEM_DESTROY(sem)		sem_destroy(sem)
 
 #endif
+
+/* PPP protocol field values */
+#define PPP_IP		0x21	/* Internet Protocol */
+#define PPP_IPV6	0x57	/* Internet Protocol Version 6 */
+#define PPP_COMP	0xfd	/* compressed packet */
+#define PPP_IPCP	0x8021	/* IP Control Protocol */
+#define PPP_IPV6CP	0x8057	/* IPv6 Control Protocol */
+#define PPP_CCP		0x80fd	/* Compression Control Protocol */
+#define PPP_LCP		0xc021	/* Link Control Protocol */
+#define PPP_PAP		0xc023	/* Password Authentication Protocol */
+#define PPP_LQR		0xc025	/* Link Quality Report protocol */
+#define PPP_CHAP	0xc223	/* Cryptographic Handshake Auth. Protocol */
+#define PPP_CBCP	0xc029	/* Callback Control Protocol */
 
 #define PKT_BUF_SZ 0x1000
 
